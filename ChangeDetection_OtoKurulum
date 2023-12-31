@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Gerekli paketleri yüklemek için sistem güncellemesi
+echo "Sistem güncelleniyor..."
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip curl unzip
+
+# changedetection.io'nun en son sürümünü indir
+echo "changedetection.io indiriliyor..."
+curl -L https://github.com/dgtlmoon/changedetection.io/archive/refs/heads/master.zip -o changedetection.io.zip
+unzip changedetection.io.zip
+cd changedetection.io-master
+
+# Gerekli Python paketlerini yülleyin
+pip3 install -r requirements.txt
+
+# changedetection.io için bir systemd servis dosyası oluştur
+cat << EOF | sudo tee /etc/systemd/system/changedetection.service
+[Unit]
+Description=changedetection.io
+After=network.target
+
+[Service]
+User=$USER
+WorkingDirectory=$(pwd)
+ExecStart=/usr/bin/python3 $(pwd)/changedetection.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Servisi etkinleştir ve başlat
+sudo systemctl enable changedetection.service
+sudo systemctl start changedetection.service
+
+echo "changedetection.io, systemd servisi olarak başlatıldı ve sistem başlangıcında çalışacak şekilde ayarlandı."
