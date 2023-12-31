@@ -1,0 +1,54 @@
+!/bin/bash
+
+# Hashtopolis için MySQL kullanıcı ve veritabanı şifrelerini ayarla
+HASHTOPOLIS_DB_PASSWORD="your_hashtopolis_db_password"  # Güçlü bir şifre seçin
+
+# Gerekli paketleri yükle
+sudo apt-get update
+sudo apt-get install -y apache2 php php-cli php-mysql git unzip curl mysql-server php-pear
+
+# MySQL için Hashtopolis kullanıcısını ve veritabanını oluştur
+sudo mysql -e "CREATE DATABASE hashtopolis"
+sudo mysql -e "CREATE USER 'hashtopolis'@'localhost' IDENTIFIED BY '$HASHTOPOLIS_DB_PASSWORD'"
+sudo mysql -e "GRANT ALL PRIVILEGES ON hashtopolis.* TO 'hashtopolis'@'localhost'"
+sudo mysql -e "FLUSH PRIVILEGES"
+
+# Hashtopolis'i indir
+wget https://github.com/hashtopolis/server/archive/refs/tags/v0.14.1.zip -O server-0.14.1.zip
+unzip server-0.14.1.zip
+sudo mv server-0.14.1/ /var/www/hashtopolis-backend
+
+# Composer'ı indir ve kur
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+sudo composer install --working-dir=/var/www/hashtopolis-backend
+
+# Apache yapılandırmasını ayarla
+sudo sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/hashtopolis-backend/src|' /etc/apache2/sites-enabled/000-default.conf
+
+# Veritabanı konfigürasyon dosyasını oluştur
+cat << EOF | sudo tee /var/www/hashtopolis-backend/src/inc/conf.php
+<?php
+//START CONFIG
+\$CONN['user'] = 'hashtopolis';
+\$CONN['pass'] = '$HASHTOPOLIS_DB_PASSWORD';
+\$CONN['server'] = 'localhost';
+\$CONN['db'] = 'hashtopolis';
+\$CONN['port'] = '3306';
+\$DIRECTORIES = [
+  "files" => "/var/www/hashtopolis-backend/files/",
+  "import" => "/var/www/hashtopolis-backend/import/",
+  "log" => "/var/www/hashtopolis-backend/log/",
+  "config" => "/var/www/hashtopolis-backend/config/",
+];
+//END CONFIG
+EOF
+
+# Hashtopolis kurulumunu tamamla ve izinleri ayarla
+sudo php -f /var/www/hashtopolis-backend/src/inc/load.php
+sudo chown -R www-data:www-data /var/www/hashtopolis-backend
+
+# Apache'yi yeniden başlat
+sudo systemctl restart apache2
+
+echo "Hashtopolis kurulumu tamamlandı."
