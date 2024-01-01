@@ -23,7 +23,7 @@ Tüm Yazılımları Kuracak Bash Scripti
 #!/bin/bash
 
 # MySQL Root Şifresi (Sunucu giriş şifresiyle aynı)
-MYSQL_ROOT_PASSWORD="root_sifresi"
+MYSQL_ROOT_PASSWORD='root_sifresi'
 
 # Sistem Güncellemesi
 apt-get update -y
@@ -57,7 +57,7 @@ Tek Tek Satır Satır Komutlar
 apt-get update -y && sudo apt-get upgrade -y
 
 2. MySQL için debconf Ayarları:
-debconf-set-selections <<< "mysql-server mysql-server/root_password password root_sifresi" && debconf-set-selections <<< "mysql-server mysql-server/root_password_again password root_sifresi"
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password '\ROOT_SIFRESI'" && sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password '\ROOT_SIFRESI'"
 
 3. Postfix için debconf Ayarları:
 debconf-set-selections <<< "postfix postfix/mailname string $(hostname -f)" && debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
