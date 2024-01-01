@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Değişkenler
+DOMAIN="denemedomain.com"
+USERNAME="deneme"
+PASSWORD="ftp_sifre" # FTP kullanıcısı için şifre
+WEB_ROOT_DIR="/home/$DOMAIN/public_html"
+MAIL_DIR="/home/$DOMAIN/mails"
+
+# Kullanıcı ve grup oluşturma
+sudo useradd -m -d /home/$DOMAIN $DOMAIN
+echo "$USERNAME:$PASSWORD" | sudo chpasswd
+
+# Web klasörleri oluşturma
+sudo mkdir -p $WEB_ROOT_DIR
+sudo chown -R $USERNAME:$USERNAME /home/$DOMAIN
+sudo chmod -R 755 /home/$DOMAIN
+
+# Apache sanal sunucu yapılandırması
+APACHE_CONF="/etc/apache2/sites-available/$DOMAIN.conf"
+sudo touch $APACHE_CONF
+sudo bash -c "cat << EOF > $APACHE_CONF
+<VirtualHost *:80>
+    ServerAdmin webmaster@$DOMAIN
+    ServerName $DOMAIN
+    ServerAlias www.$DOMAIN
+    DocumentRoot $WEB_ROOT_DIR
+    ErrorLog \${APACHE_LOG_DIR}/error.log
+    CustomLog \${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF"
+
+# Apache sanal sunucuyu etkinleştirme ve yeniden başlatma
+sudo a2ensite $DOMAIN.conf
+sudo systemctl reload apache2
+
+# Postfix ve Dovecot için sanal posta kutusu kullanıcıları ayarla
+sudo groupadd -g 5000 vmail
+sudo useradd -g vmail -u 5000 vmail -d $MAIL_DIR -m
+
+# Mail klasörleri oluşturma
+sudo mkdir -p $MAIL_DIR
+sudo chown -R vmail:vmail $MAIL_DIR
+
+# Postfix yapılandırması
+sudo postconf -e "virtual_mailbox_domains = $DOMAIN"
+sudo postconf -e "virtual_mailbox_base = $MAIL_DIR"
+sudo postconf -e "virtual_mailbox_maps = hash:/etc/postfix/vmailbox"
+sudo postconf -e "virtual_minimum_uid = 100"
+sudo postconf -e "virtual_uid_maps = static:5000"
+sudo postconf -e "virtual_gid_maps = static:5000"
+
+# Dovecot yapılandırması
+sudo sed -i "/^mail_location =/c\mail_location = maildir:$MAIL_DIR/%d/%n" /etc/dovecot/conf.d/10-mail.conf
+
+# FTP kullanıcı ayarlarını yapılandırma (vsftpd)
+sudo mkdir -p /etc/vsftpd_user_conf
+echo "local_root=$WEB_ROOT_DIR" | sudo tee /etc/vsftpd_user_conf/$USERNAME
+echo $USERNAME | sudo tee -a /etc/vsftpd.userlist
+
+# Postfix ve Dovecot'u yeniden başlat
+sudo systemctl restart postfix
+sudo systemctl restart dovecot
+
+# vsftpd yeniden başlatma
+sudo systemctl restart vsftpd
+
+___________
+Bundan sonrası tek satırda bu kodları sıralı çalıştırmayı yapacağız. birde burada DNS server eklenmedi. o da eklenecek
