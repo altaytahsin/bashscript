@@ -8,18 +8,18 @@ WEB_ROOT_DIR="/home/$DOMAIN/public_html"
 MAIL_DIR="/home/$DOMAIN/mails"
 
 # Kullanıcı ve grup oluşturma
-sudo useradd -m -d /home/$DOMAIN $DOMAIN
+useradd -m -d /home/$DOMAIN $DOMAIN
 echo "$USERNAME:$PASSWORD" | sudo chpasswd
 
 # Web klasörleri oluşturma
-sudo mkdir -p $WEB_ROOT_DIR
-sudo chown -R $USERNAME:$USERNAME /home/$DOMAIN
-sudo chmod -R 755 /home/$DOMAIN
+mkdir -p $WEB_ROOT_DIR
+chown -R $USERNAME:$USERNAME /home/$DOMAIN
+chmod -R 755 /home/$DOMAIN
 
 # Apache sanal sunucu yapılandırması
 APACHE_CONF="/etc/apache2/sites-available/$DOMAIN.conf"
-sudo touch $APACHE_CONF
-sudo bash -c "cat << EOF > $APACHE_CONF
+touch $APACHE_CONF
+bash -c "cat << EOF > $APACHE_CONF
 <VirtualHost *:80>
     ServerAdmin webmaster@$DOMAIN
     ServerName $DOMAIN
@@ -31,73 +31,73 @@ sudo bash -c "cat << EOF > $APACHE_CONF
 EOF"
 
 # Apache sanal sunucuyu etkinleştirme ve yeniden başlatma
-sudo a2ensite $DOMAIN.conf
-sudo systemctl reload apache2
+a2ensite $DOMAIN.conf
+systemctl reload apache2
 
 # Postfix ve Dovecot için sanal posta kutusu kullanıcıları ayarla
-sudo groupadd -g 5000 vmail
-sudo useradd -g vmail -u 5000 vmail -d $MAIL_DIR -m
+groupadd -g 5000 vmail
+useradd -g vmail -u 5000 vmail -d $MAIL_DIR -m
 
 # Mail klasörleri oluşturma
-sudo mkdir -p $MAIL_DIR
-sudo chown -R vmail:vmail $MAIL_DIR
+mkdir -p $MAIL_DIR
+chown -R vmail:vmail $MAIL_DIR
 
 # Postfix yapılandırması
-sudo postconf -e "virtual_mailbox_domains = $DOMAIN"
-sudo postconf -e "virtual_mailbox_base = $MAIL_DIR"
-sudo postconf -e "virtual_mailbox_maps = hash:/etc/postfix/vmailbox"
-sudo postconf -e "virtual_minimum_uid = 100"
-sudo postconf -e "virtual_uid_maps = static:5000"
-sudo postconf -e "virtual_gid_maps = static:5000"
+postconf -e "virtual_mailbox_domains = $DOMAIN"
+postconf -e "virtual_mailbox_base = $MAIL_DIR"
+postconf -e "virtual_mailbox_maps = hash:/etc/postfix/vmailbox"
+postconf -e "virtual_minimum_uid = 100"
+postconf -e "virtual_uid_maps = static:5000"
+postconf -e "virtual_gid_maps = static:5000"
 
 # Dovecot yapılandırması
-sudo sed -i "/^mail_location =/c\mail_location = maildir:$MAIL_DIR/%d/%n" /etc/dovecot/conf.d/10-mail.conf
+sed -i "/^mail_location =/c\mail_location = maildir:$MAIL_DIR/%d/%n" /etc/dovecot/conf.d/10-mail.conf
 
 # FTP kullanıcı ayarlarını yapılandırma (vsftpd)
-sudo mkdir -p /etc/vsftpd_user_conf
+mkdir -p /etc/vsftpd_user_conf
 echo "local_root=$WEB_ROOT_DIR" | sudo tee /etc/vsftpd_user_conf/$USERNAME
 echo $USERNAME | sudo tee -a /etc/vsftpd.userlist
 
 # Postfix ve Dovecot'u yeniden başlat
-sudo systemctl restart postfix
-sudo systemctl restart dovecot
+systemctl restart postfix
+systemctl restart dovecot
 
 # vsftpd yeniden başlatma
-sudo systemctl restart vsftpd
+systemctl restart vsftpd
 
 ___________
 birde burada DNS server eklenmedi. o da eklenecek
 Bundan sonrası tek satırda bu kodları sıralı çalıştırmayı yapacağız. denemedomain.com, deneme, ftp_sifre gibi değerleri her seferinde replace edeceğiz.
 ___________
 Kullanıcı ve Grup Oluşturma:
-sudo useradd -m -d /home/denemedomain.com denemedomain.com && echo "deneme:ftp_sifre" | sudo chpasswd
+useradd -m -d /home/denemedomain.com denemedomain.com && echo "deneme:ftp_sifre" | sudo chpasswd
 
 Web Klasörleri Oluşturma:
-sudo mkdir -p /home/denemedomain.com/public_html && sudo chown -R deneme:deneme /home/denemedomain.com && sudo chmod -R 755 /home/denemedomain.com
+mkdir -p /home/denemedomain.com/public_html && sudo chown -R deneme:deneme /home/denemedomain.com && sudo chmod -R 755 /home/denemedomain.com
 
 Apache Sanal Sunucu Yapılandırması:
 echo "<VirtualHost *:80>\n\tServerAdmin webmaster@denemedomain.com\n\tServerName denemedomain.com\n\tServerAlias www.denemedomain.com\n\tDocumentRoot /home/denemedomain.com/public_html\n\tErrorLog \${APACHE_LOG_DIR}/error.log\n\tCustomLog \${APACHE_LOG_DIR}/access.log combined\n</VirtualHost>" | sudo tee /etc/apache2/sites-available/denemedomain.com.conf
 
 Apache Sanal Sunucuyu Etkinleştirme ve Yeniden Başlatma:
-sudo a2ensite denemedomain.com.conf && sudo systemctl reload apache2
+a2ensite denemedomain.com.conf && sudo systemctl reload apache2
 
 Postfix ve Dovecot İçin Sanal Posta Kutusu Kullanıcıları Ayarlama:
-sudo groupadd -g 5000 vmail && sudo useradd -g vmail -u 5000 vmail -d /home/denemedomain.com/mails -m
+groupadd -g 5000 vmail && sudo useradd -g vmail -u 5000 vmail -d /home/denemedomain.com/mails -m
 
 Mail Klasörleri Oluşturma:
-sudo mkdir -p /home/denemedomain.com/mails && sudo chown -R vmail:vmail /home/denemedomain.com/mails
+mkdir -p /home/denemedomain.com/mails && sudo chown -R vmail:vmail /home/denemedomain.com/mails
 
 Postfix Yapılandırması:
-sudo postconf -e "virtual_mailbox_domains = denemedomain.com" && sudo postconf -e "virtual_mailbox_base = /home/denemedomain.com/mails" && sudo postconf -e "virtual_mailbox_maps = hash:/etc/postfix/vmailbox" && sudo postconf -e "virtual_minimum_uid = 100" && sudo postconf -e "virtual_uid_maps = static:5000" && sudo postconf -e "virtual_gid_maps = static:5000"
+postconf -e "virtual_mailbox_domains = denemedomain.com" && sudo postconf -e "virtual_mailbox_base = /home/denemedomain.com/mails" && sudo postconf -e "virtual_mailbox_maps = hash:/etc/postfix/vmailbox" && sudo postconf -e "virtual_minimum_uid = 100" && sudo postconf -e "virtual_uid_maps = static:5000" && sudo postconf -e "virtual_gid_maps = static:5000"
 
 Dovecot Yapılandırması:
-sudo sed -i "/^mail_location =/c\mail_location = maildir:/home/denemedomain.com/mails/%d/%n" /etc/dovecot/conf.d/10-mail.conf
+sed -i "/^mail_location =/c\mail_location = maildir:/home/denemedomain.com/mails/%d/%n" /etc/dovecot/conf.d/10-mail.conf
 
 FTP Kullanıcı Ayarlarını Yapılandırma (vsftpd için):
-sudo mkdir -p /etc/vsftpd_user_conf && echo "local_root=/home/denemedomain.com/public_html" | sudo tee /etc/vsftpd_user_conf/deneme && echo "deneme" | sudo tee -a /etc/vsftpd.userlist
+mkdir -p /etc/vsftpd_user_conf && echo "local_root=/home/denemedomain.com/public_html" | sudo tee /etc/vsftpd_user_conf/deneme && echo "deneme" | sudo tee -a /etc/vsftpd.userlist
 
 Postfix ve Dovecot'u Yeniden Başlat:
-sudo systemctl restart postfix && sudo systemctl restart dovecot
+systemctl restart postfix && sudo systemctl restart dovecot
 
 vsftpd Yeniden Başlatma:
-sudo systemctl restart vsftpd
+systemctl restart vsftpd
