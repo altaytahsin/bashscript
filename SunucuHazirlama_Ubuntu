@@ -7,7 +7,7 @@ Gerekli Yazılımlar Listesi
 3. PHP: Web geliştirme için.
 4. Postfix: E-posta sunucusu.
 5. Dovecot: IMAP ve POP3 sunucusu.
-6. PowerDNS: DNS sunucusu.
+6. BIND: DNS sunucusu.
 7. vsftpd: FTP sunucusu.
 8. UFW: Güvenlik duvarı.
 9. Fail2ban: Otomatik IP banlama ve güvenlik.
@@ -38,13 +38,13 @@ debconf-set-selections <<< "postfix postfix/mailname string $(hostname -f)"
 debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
 
 # Yazılımları Kurma
-apt-get install -y apache2 mysql-server php postfix dovecot-core dovecot-imapd pdns-server pdns-backend-mysql vsftpd ufw fail2ban
+apt-get install -y apache2 mysql-server php postfix dovecot-core dovecot-imapd bind9 vsftpd ufw fail2ban
 
 # Servisleri Yeniden Başlatma / Etkinleştirme
 systemctl restart apache2
 systemctl restart postfix
 systemctl restart dovecot
-systemctl restart pdns
+systemctl restart bind9
 systemctl restart vsftpd
 systemctl enable ufw
 systemctl restart fail2ban
@@ -77,8 +77,8 @@ apt-get install -y postfix
 8. Dovecot Kurulumu:
 apt-get install -y dovecot-core dovecot-imapd
 
-9. PowerDNS Kurulumu:
-apt-get install -y pdns-server pdns-backend-mysql
+9. BIND Kurulumu:
+apt-get install -y bind9
 
 10. vsftpd Kurulumu:
 apt-get install -y vsftpd
@@ -91,7 +91,7 @@ apt-get install -y ufw fail2ban
 systemctl restart apache2
 systemctl restart postfix
 systemctl restart dovecot
-systemctl restart pdns
+systemctl restart bind9
 systemctl restart vsftpd
 systemctl enable ufw
 systemctl restart fail2ban
