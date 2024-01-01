@@ -22,22 +22,25 @@ Tüm Yazılımları Kuracak Bash Scripti
 
 #!/bin/bash
 
-# MySQL Root Şifresi. Sunucu giriş bilgisinden alıp yollarız.
+# MySQL Root Şifresi (Sunucu giriş şifresiyle aynı)
 MYSQL_ROOT_PASSWORD="root_sifresi"
 
 # Sistem Güncellemesi
 apt-get update -y
 apt-get upgrade -y
 
-# Apache2, MySQL, PHP, Postfix, Dovecot, PowerDNS, vsftpd, UFW, Fail2ban Kurulumu
+# MySQL için debconf ayarları
+debconf-set-selections <<< "mysql-server mysql-server/root_password password $MYSQL_ROOT_PASSWORD"
+debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $MYSQL_ROOT_PASSWORD"
 
+# Postfix için debconf ayarları
+debconf-set-selections <<< "postfix postfix/mailname string $(hostname -f)"
+debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+
+# Yazılımları Kurma
 apt-get install -y apache2 mysql-server php postfix dovecot-core dovecot-imapd pdns-server pdns-backend-mysql vsftpd ufw fail2ban
 
-# MySQL Root Şifresini Ayarlama
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD'; FLUSH PRIVILEGES;"
-
-# Apache2, Postfix, Dovecot, PowerDNS, vsftpd, UFW, Fail2ban Yeniden Başlatma / Etkinleştirme
-
+# Servisleri Yeniden Başlatma / Etkinleştirme
 systemctl restart apache2
 systemctl restart postfix
 systemctl restart dovecot
@@ -53,34 +56,37 @@ Tek Tek Satır Satır Komutlar
 1. Sistem Güncellemesi:
 apt-get update -y && sudo apt-get upgrade -y
 
-2. Apache2 Kurulumu:
+2. MySQL için debconf Ayarları:
+debconf-set-selections <<< "mysql-server mysql-server/root_password password root_sifresi" && debconf-set-selections <<< "mysql-server mysql-server/root_password_again password root_sifresi"
+
+3. Postfix için debconf Ayarları:
+debconf-set-selections <<< "postfix postfix/mailname string $(hostname -f)" && debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+
+4. Apache2 Kurulumu:
 apt-get install -y apache2
 
-3. MySQL/MariaDB Kurulumu:
+5. MySQL/MariaDB Kurulumu:
 apt-get install -y mysql-server
 
-4. PHP Kurulumu:
+6. PHP Kurulumu:
 apt-get install -y php
 
-5. Postfix Kurulumu:
+7. Postfix Kurulumu:
 apt-get install -y postfix
 
-6. Dovecot Kurulumu:
+8. Dovecot Kurulumu:
 apt-get install -y dovecot-core dovecot-imapd
 
-7. PowerDNS Kurulumu:
+9. PowerDNS Kurulumu:
 apt-get install -y pdns-server pdns-backend-mysql
 
-8. vsftpd Kurulumu:
+10. vsftpd Kurulumu:
 apt-get install -y vsftpd
 
-9. UFW ve Fail2ban Kurulumu:
+11. UFW ve Fail2ban Kurulumu:
 apt-get install -y ufw fail2ban
 
-10. MySQL Root Şifresini Ayarlama:
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root_sifresi'; FLUSH PRIVILEGES;"
-
-11. Servisleri Yeniden Başlatma / Etkinleştirme:
+12. Servisleri Yeniden Başlatma / Etkinleştirme:
 
 systemctl restart apache2
 systemctl restart postfix
