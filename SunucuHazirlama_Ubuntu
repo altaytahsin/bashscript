@@ -1,0 +1,91 @@
+=====
+Gerekli Yazılımlar Listesi
+=====
+
+1. Apache2: Web sunucusu.
+2. MySQL/MariaDB: Veritabanı sunucusu.
+3. PHP: Web geliştirme için.
+4. Postfix: E-posta sunucusu.
+5. Dovecot: IMAP ve POP3 sunucusu.
+6. PowerDNS: DNS sunucusu.
+7. vsftpd: FTP sunucusu.
+8. UFW: Güvenlik duvarı.
+9. Fail2ban: Otomatik IP banlama ve güvenlik.
+
+Yukarıda olanlardan hangileri seçilirse onlar kurulacak. fakat hosting sunucusu olabilmesi için, 8 ve 9 numara hariç hepsi zorunlu. yoksa hep eksik kalır sorun çıkar. 
+
+PHP ve Apache alt modülleri var. onları ayrıca ele alıcaz. Şu andaki hali ile basic olarak çalışmış olacak.
+
+=====
+Tüm Yazılımları Kuracak Bash Scripti
+=====
+
+#!/bin/bash
+
+# MySQL Root Şifresi. Sunucu giriş bilgisinden alıp yollarız.
+MYSQL_ROOT_PASSWORD="root_sifresi"
+
+# Sistem Güncellemesi
+apt-get update -y
+apt-get upgrade -y
+
+# Apache2, MySQL, PHP, Postfix, Dovecot, PowerDNS, vsftpd, UFW, Fail2ban Kurulumu
+
+apt-get install -y apache2 mysql-server php postfix dovecot-core dovecot-imapd pdns-server pdns-backend-mysql vsftpd ufw fail2ban
+
+# MySQL Root Şifresini Ayarlama
+mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD'; FLUSH PRIVILEGES;"
+
+# Apache2, Postfix, Dovecot, PowerDNS, vsftpd, UFW, Fail2ban Yeniden Başlatma / Etkinleştirme
+
+systemctl restart apache2
+systemctl restart postfix
+systemctl restart dovecot
+systemctl restart pdns
+systemctl restart vsftpd
+systemctl enable ufw
+systemctl restart fail2ban
+
+=====
+Tek Tek Satır Satır Komutlar
+=====
+
+1. Sistem Güncellemesi:
+apt-get update -y && sudo apt-get upgrade -y
+
+2. Apache2 Kurulumu:
+apt-get install -y apache2
+
+3. MySQL/MariaDB Kurulumu:
+apt-get install -y mysql-server
+
+4. PHP Kurulumu:
+apt-get install -y php
+
+5. Postfix Kurulumu:
+apt-get install -y postfix
+
+6. Dovecot Kurulumu:
+apt-get install -y dovecot-core dovecot-imapd
+
+7. PowerDNS Kurulumu:
+apt-get install -y pdns-server pdns-backend-mysql
+
+8. vsftpd Kurulumu:
+apt-get install -y vsftpd
+
+9. UFW ve Fail2ban Kurulumu:
+apt-get install -y ufw fail2ban
+
+10. MySQL Root Şifresini Ayarlama:
+mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root_sifresi'; FLUSH PRIVILEGES;"
+
+11. Servisleri Yeniden Başlatma / Etkinleştirme:
+
+systemctl restart apache2
+systemctl restart postfix
+systemctl restart dovecot
+systemctl restart pdns
+systemctl restart vsftpd
+systemctl enable ufw
+systemctl restart fail2ban
