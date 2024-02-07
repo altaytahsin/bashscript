@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# ---- Kullanıcıdan Alınacak Bilgiler ----
+# Bu değerleri kendi ihtiyaçlarınıza göre güncelleyin.
+MINIO_ROOT_USER="minioadmin"
+MINIO_ROOT_PASSWORD="minioadminpassword"
+MINIO_STORAGE_DIR="/data/minio"
+ELASTIC_PASSWORD="elasticsearchpassword"
+OPENCTI_ADMIN_EMAIL="admin@example.com"
+OPENCTI_ADMIN_PASSWORD="openctipassword"
+OPENCTI_TOKEN=$(uuidgen) # Bu komut otomatik olarak bir UUID oluşturur.
+
+# ---- Sistem Güncellemesi ve Gerekli Paketlerin Kurulumu ----
+echo "Sistem güncellemeleri ve gerekli paketlerin kurulumu yapılıyor..."
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common nodejs npm python3 python3-pip redis-server rabbitmq-server uuid-runtime git
+
+# ---- RabbitMQ Yönetim Plugin'inin Etkinleştirilmesi ----
+echo "RabbitMQ yönetim plugin'i etkinleştiriliyor..."
+sudo rabbitmq-plugins enable rabbitmq_management
+
+# ---- MinIO Kurulumu ----
+echo "MinIO kurulumu yapılıyor..."
+wget https://dl.min.io/server/minio/release/linux-amd64/minio
+chmod +x minio
+sudo mv minio /usr/local/bin
+mkdir -p ${MINIO_STORAGE_DIR}
+sudo bash -c "MINIO_ROOT_USER=${MINIO_ROOT_USER} MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD} nohup minio server ${MINIO_STORAGE_DIR} --address :9000 &"
+
+# ---- Elasticsearch Kurulumu ----
+echo "Elasticsearch kurulumu yapılıyor..."
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+sudo apt update && sudo apt install -y elasticsearch
+sudo systemctl start elasticsearch
+sudo systemctl enable elasticsearch
+
+# ---- YARN Kurulumu ----
+echo "YARN kurulumu yapılıyor..."
+curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee -a /etc/apt/sources.list.d/yarn.list
+sudo apt update && sudo apt install -y yarn
+
+# ---- OpenCTI Platformunun Kurulumu ----
+echo "OpenCTI platformunun kurulumu yapılıyor..."
+git clone https://github.com/OpenCTI-Platform/opencti.git
+cd opencti
+git checkout tags/4.5.5  # Bu, belirli bir sürümü kullanmak için. En güncel sürüm için bu satırı değiştirebilirsiniz.
+sed -i "s|\"password\": \"admin\"|\"password\": \"${OPENCTI_ADMIN_PASSWORD}\"|g" config/default.json
+sed -i "s|\"email\": \"admin@opencti.io\"|\"email\": \"${OPENCTI_ADMIN_EMAIL}\"|g" config/default.json
+sed -i "s|\"admin\": {\"token\": \"ChangeMe\"|\"admin\": {\"token\": \"${OPENCTI_TOKEN}\"|g" config/default.json
+
+# ---- Python Bağımlılıklarının Kurulumu ----
+echo "Python bağımlılıklarının kurulumu yapılıyor..."
+cd src/python
+pip3 install -r requirements.txt
+
+# ---- Web Platformunun Başlatılması ----
+echo "Web platformunun başlatılması..."
+cd ../..
+yarn install
+yarn build
+yarn serve &
+
+# ---- Güvenlik Duvarı Ayarlarının Yapılandırılması ----
+echo "Güvenlik duvarı ayarları yapılandırılıyor..."
+sudo ufw allow 80/tcp
+sudo ufw allow 22/tcp  # SSH erişimi
+sudo ufw enable
+sudo ufw status
+
+echo "OpenCTI kurulumu tamamlandı. Yönetici bilgileri:"
+echo "E-posta: ${OPENCTI_ADMIN_EMAIL}"
+echo "Parola: ${OPENCTI_ADMIN_PASSWORD}"
+echo "OpenCTI API Token: ${OPENCTI_TOKEN}"
