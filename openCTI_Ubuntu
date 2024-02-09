@@ -4,7 +4,7 @@
 MINIO_ROOT_USER="MinIO_Root"
 MINIO_ROOT_PASSWORD="Password"
 ELASTIC_PASSWORD="Password"
-OPENCTI_ADMIN_EMAIL="cyrix@istanify.com"
+OPENCTI_ADMIN_EMAIL="admin@istanify.com"
 OPENCTI_ADMIN_PASSWORD="Password"
 OPENCTI_TOKEN=$(uuidgen) # OpenCTI için bir UUID oluşturur.
 RELEASE_VERSION="5.12.29"
