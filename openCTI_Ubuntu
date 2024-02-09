@@ -1,90 +1,68 @@
 #!/bin/bash
 
-# Kullanıcıdan Alınan Bilgiler
-MINIO_ROOT_USER="cyrix"
-MINIO_ROOT_PASSWORD="AdminPass"
-ELASTIC_PASSWORD="AdminPass"
-OPENCTI_ADMIN_EMAIL="posta@istanify.com"
-OPENCTI_ADMIN_PASSWORD="AdminPass"
-OPENCTI_TOKEN=$(uuidgen) # Bu komut otomatik olarak bir UUID oluşturur.
+# Kullanıcı tanımlı bilgiler
+MINIO_ROOT_USER="MinIO_Root"
+MINIO_ROOT_PASSWORD="Password"
+ELASTIC_PASSWORD="Password"
+OPENCTI_ADMIN_EMAIL="cyrix@istanify.com"
+OPENCTI_ADMIN_PASSWORD="Password"
+OPENCTI_TOKEN=$(uuidgen) # OpenCTI için bir UUID oluşturur.
+RELEASE_VERSION="5.12.29"
 
-# Sistem Güncellemesi ve Gerekli Paketlerin Kurulumu
-echo "Sistem güncellemeleri ve gerekli paketlerin kurulumu yapılıyor..."
-sudo apt-get update && sudo apt-get upgrade -y
+# Gerekli bağımlılıkların kurulumu
+echo "Gerekli bağımlılıklar kuruluyor..."
+sudo apt-get update
+sudo apt-get install -y build-essential nodejs npm python3 python3-pip python3-dev
 
-# Node.js ve Yarn Kurulumu
-if ! command -v node >/dev/null 2>&1; then
-    echo "Node.js kuruluyor..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-else
-    echo "Node.js zaten kurulu."
-fi
+# Elasticsearch Kurulumu
+echo "Elasticsearch Kurulumu..."
+sudo apt-get install -y elasticsearch
+sudo systemctl start elasticsearch
+sudo systemctl enable elasticsearch
 
-if ! command -v yarn >/dev/null 2>&1; then
-    echo "Yarn kuruluyor..."
-    npm install --global yarn
-else
-    echo "Yarn zaten kurulu."
-fi
+# Redis Kurulumu
+echo "Redis Kurulumu..."
+sudo apt-get install -y redis-server
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
 
-# Python3-pip ve Diğer Bağımlılıkların Kurulumu
-echo "Python3-pip ve diğer bağımlılıkların kurulumu yapılıyor..."
-sudo apt-get install -y python3-pip redis-server rabbitmq-server
-
-# RabbitMQ Yönetim Plugin'inin Etkinleştirilmesi
-echo "RabbitMQ yönetim plugin'i etkinleştiriliyor..."
-sudo rabbitmq-plugins enable rabbitmq_management
-
-# Elasticsearch Kurulumu ve Yapılandırılması
-echo "Elasticsearch kurulumu ve yapılandırılması yapılıyor..."
-if ! service --status-all | grep -Fq 'elasticsearch'; then
-    wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-    echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-7.x.list
-    sudo apt-get update && sudo apt-get install -y elasticsearch
-    sudo systemctl start elasticsearch
-    sudo systemctl enable elasticsearch
-else
-    echo "Elasticsearch zaten kurulu."
-fi
+# RabbitMQ Kurulumu
+echo "RabbitMQ Kurulumu..."
+sudo apt-get install -y rabbitmq-server
+sudo systemctl start rabbitmq-server
+sudo systemctl enable rabbitmq-server
 
 # MinIO Kurulumu
-echo "MinIO kurulumu yapılıyor..."
-if ! command -v minio >/dev/null 2>&1; then
-    wget https://dl.min.io/server/minio/release/linux-amd64/minio
-    chmod +x minio
-    sudo mv minio /usr/local/bin/
-    mkdir -p ~/minio-data
-else
-    echo "MinIO zaten kurulu."
-fi
+echo "MinIO Kurulumu..."
+wget https://dl.min.io/server/minio/release/linux-amd64/minio
+chmod +x minio
+sudo mv minio /usr/local/bin/
+mkdir -p ~/minio-data
+export MINIO_ROOT_USER=$MINIO_ROOT_USER
+export MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD
+minio server ~/minio-data --address :9000 &
 
-# OpenCTI Platformunun Kurulumu
-echo "OpenCTI platformunun kurulumu yapılıyor..."
-if [ ! -d "opencti" ]; then
-    git clone https://github.com/OpenCTI-Platform/opencti.git
-    cd opencti || exit
-    git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
-    yarn install
-    yarn build
-else
-    echo "OpenCTI zaten klonlandı."
-    cd opencti || exit
-fi
+# OpenCTI İndirme ve Kurulumu
+echo "OpenCTI İndirme ve Kurulumu..."
+wget "https://github.com/OpenCTI-Platform/opencti/releases/download/$RELEASE_VERSION/opencti-release-$RELEASE_VERSION.tar.gz"
+tar xvfz opencti-release-$RELEASE_VERSION.tar.gz
+cd opencti
+cp config/default.json config/production.json
 
-# Güvenlik Duvarı Ayarları
-echo "Güvenlik duvarı ayarları yapılandırılıyor..."
-sudo ufw allow 80/tcp
-sudo ufw allow 22/tcp
-echo "Güvenlik duvarı kuralları ayarlandı."
+# OpenCTI yapılandırma dosyasının güncellenmesi
+# Burada, ElasticSearch, Redis, RabbitMQ ve MinIO/S3 yapılandırma detaylarınızı ekleyin.
+sed -i "s|\"admin@opencti.io\"|\"$OPENCTI_ADMIN_EMAIL\"|g" config/production.json
+sed -i "s|\"ChangeMe\"|\"$OPENCTI_ADMIN_PASSWORD\"|g" config/production.json
+sed -i "s|\"ChangeMe\"|\"$OPENCTI_TOKEN\"|g" config/production.json
 
-# OpenCTI .env dosyası oluşturma ve başlatma
-echo "OpenCTI .env dosyası oluşturuluyor ve servis başlatılıyor..."
-cat <<EOF >.env
-OPENCTI_ADMIN_EMAIL=$OPENCTI_ADMIN_EMAIL
-OPENCTI_ADMIN_PASSWORD=$OPENCTI_ADMIN_PASSWORD
-OPENCTI_TOKEN=$OPENCTI_TOKEN
-EOF
+# Python bağımlılıklarının kurulumu
+cd src/python
+pip3 install -r requirements.txt
 
-echo "OpenCTI başlatılıyor..."
-yarn serve
+# Ana dizine geri dönme ve OpenCTI'nin başlatılması
+cd ../..
+yarn install
+yarn build
+yarn serv
+
+echo "OpenCTI başarıyla kuruldu ve yapılandırıldı."
